@@ -27,12 +27,13 @@ function init(){
     let ref = db.ref("test/status");
 
     rcs.on('data', function (data) {
+        data = data.toString();
         console.log('Received:', data);
         ref.set(data, function(error) {
             if (error) {
                 console.log("Data could not be saved." + error);
             } else {
-                console.log('Received data saved to firebase:');
+                console.log('Received data saved to firebase');
                 requestStatus(rcs);
             }
         });
