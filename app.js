@@ -49,19 +49,28 @@ function initSerial(){
 
 function requestStatus() {
     _.range(5)
-        .map(n => n + 1)
-        .map(zoneId => `A=${zoneId} R=1\r`)
-        .forEach(message => {
-            console.log('Sending message:', message);
-            rcs.write(message, function (err) {
-                if (err) {
-                    return console.log('Error on writing:', message, 'Error message:', err.message);
-                }
-            });
+        .map(zoneId => {
+            zoneId++; // convert 0 offset to zones beginning at 1
+            return {
+                id: zoneId,
+                message: `A=${zoneId} R=1\r`
+            };
+        })
+        .forEach(zone => {
+            setTimeout(() => sendMessage(zone.message), 100 * zone.id)
         });
 
     console.log(`Waiting ${refreshInterval}ms before checking status`);
     setTimeout(requestStatus, refreshInterval);
+}
+
+function sendMessage(message){
+    console.log('Sending message:', message);
+    rcs.write(message, function (err) {
+        if (err) {
+            return console.log('Error on writing:', message, 'Error message:', err.message);
+        }
+    });
 }
 
 function handleResponse(serialData){
