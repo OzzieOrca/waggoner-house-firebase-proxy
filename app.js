@@ -20,17 +20,19 @@ function init(){
     });
 
     rcs.on('error', function(err) {
-        console.log('Error: ', err.message);
+        console.log('Serial error: ', err.message);
     });
 
     let db = firebase.database();
     let ref = db.ref("test/status");
 
     rcs.on('data', function (data) {
+        console.log('Received:', data);
         ref.set(data, function(error) {
             if (error) {
                 console.log("Data could not be saved." + error);
             } else {
+                console.log('Received data saved to firebase:');
                 requestStatus(rcs);
             }
         });
@@ -38,10 +40,12 @@ function init(){
 }
 
 function requestStatus(rcs){
-    rcs.write('A=1 R=1\r', function(err) {
+    console.log('Sending message');
+    let message = 'A=1 R=1\r';
+    rcs.write(message, function(err) {
         if (err) {
             return console.log('Error on write: ', err.message);
         }
-        console.log('message written');
+        console.log('Sent:', message);
     });
 }
