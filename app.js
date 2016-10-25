@@ -7,6 +7,7 @@ let _ = require('lodash');
 let db;
 let rcs;
 let refreshInterval = 10000;
+let thermostatCache = {};
 
 init();
 
@@ -23,12 +24,17 @@ function initFirebase(){
 
     db = firebase.database();
 
-    let ref = db.ref('thermostats/config/refreshInterval');
-    ref.on("value", function(snapshot) {
-        refreshInterval = snapshot.val();
-    }, function (errorObject) {
-        console.log("Error reading refreshInterval: " + errorObject);
-    });
+    db.ref('thermostats/config/refreshInterval')
+        .on("value", function(snapshot) {
+            refreshInterval = snapshot.val();
+        }, function (errorObject) {
+            console.log("Error reading refreshInterval: " + errorObject);
+        });
+
+    db.ref('thermostats')
+        .on("child_changed", function(snapshot) {
+            setThermostat(snapshot.val());
+        });
 }
 
 function initSerial(){
@@ -78,8 +84,8 @@ function handleResponse(serialData){
     console.log('Received:', message);
     let statusObj = parseStatusType1(message);
 
+    thermostatCache[statusObj.zone] = statusObj;
     let ref = db.ref(`thermostats/zone${statusObj.zone}`);
-    statusObj = _.omit(statusObj, 'zone');
 
     ref.update(statusObj, function(error) {
         if (error) {
@@ -120,4 +126,35 @@ function parseStatusType1(message){
             }
             return result;
         }, {});
+}
+
+function setThermostat(data){
+    let changes = getThermostatChanges(data);
+    if(changes.length === 0) return;
+
+    let message = _.reduce(changes, (result, value) => {
+            switch(value){
+                case 'setPointHeating':
+                    result += ` SPH=${data.setPointHeating}`;
+                    break;
+                case 'setPointCooling':
+                    result += ` SPC=${data.setPointCooling}`;
+                    break;
+                case 'currentMode':
+                    result += ` M=${data.currentMode}`;
+                    break;
+                case 'fanMode':
+                    result += ` F=${data.fanMode}`;
+                    break;
+            }
+        return result;
+    }, `A=${data.zone}`) + '\r';
+    sendMessage(message);
+}
+
+function getThermostatChanges(data){
+    return _.reduce(data, (result, value, key) => {
+        return _.isEqual(value, thermostatCache[data.zone][key]) ?
+            result : result.concat(key);
+    }, []);
 }
