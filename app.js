@@ -3,17 +3,20 @@
 let firebase = require('firebase');
 let SerialPort = require('serialport');
 let _ = require('lodash');
+let MessageQueue = require('./message-queue.js');
 
 let db;
 let rcs;
 let refreshInterval = 10000;
 let thermostatCache = {};
+let messageQueue = new MessageQueue();
 
 init();
 
 function init(){
     initFirebase();
     initSerial();
+    emptyMessageQueue();
 }
 
 function initFirebase(){
@@ -54,29 +57,17 @@ function initSerial(){
 }
 
 function requestStatus() {
-    _.range(5)
-        .map(zoneId => {
-            zoneId++; // convert 0 offset to zones beginning at 1
-            return {
-                id: zoneId,
-                message: `A=${zoneId} R=1\r`
-            };
-        })
-        .forEach(zone => {
-            setTimeout(() => sendMessage(zone.message), 100 * zone.id)
-        });
+    messageQueue.enqueue(
+        _.range(5)
+            .map(zoneId => {
+                zoneId++; // convert 0 offset to zones beginning at 1
+                return `A=${zoneId} R=1`;
+            }),
+        true
+    );
 
     console.log(`Waiting ${refreshInterval}ms before checking status`);
     setTimeout(requestStatus, refreshInterval);
-}
-
-function sendMessage(message){
-    console.log('Sending message:', message);
-    rcs.write(message, function (err) {
-        if (err) {
-            return console.log('Error on writing:', message, 'Error message:', err.message);
-        }
-    });
 }
 
 function handleResponse(serialData){
@@ -132,24 +123,23 @@ function setThermostat(data){
     let changes = getThermostatChanges(data);
     if(changes.length === 0) return;
 
-    let message = _.reduce(changes, (result, value) => {
-            switch(value){
-                case 'setPointHeating':
-                    result += ` SPH=${data.setPointHeating}`;
-                    break;
-                case 'setPointCooling':
-                    result += ` SPC=${data.setPointCooling}`;
-                    break;
-                case 'currentMode':
-                    result += ` M=${data.currentMode}`;
-                    break;
-                case 'fanMode':
-                    result += ` F=${data.fanMode}`;
-                    break;
-            }
+    messageQueue.enqueue(_.reduce(changes, (result, value) => {
+        switch(value){
+            case 'setPointHeating':
+                result += ` SPH=${data.setPointHeating}`;
+                break;
+            case 'setPointCooling':
+                result += ` SPC=${data.setPointCooling}`;
+                break;
+            case 'currentMode':
+                result += ` M=${data.currentMode}`;
+                break;
+            case 'fanMode':
+                result += ` F=${data.fanMode}`;
+                break;
+        }
         return result;
-    }, `A=${data.zone}`) + '\r';
-    sendMessage(message);
+    }, `A=${data.zone}`));
 }
 
 function getThermostatChanges(data){
@@ -157,4 +147,23 @@ function getThermostatChanges(data){
         return _.isEqual(value, thermostatCache[data.zone][key]) ?
             result : result.concat(key);
     }, []);
+}
+
+function emptyMessageQueue(){
+    let expectResponse;
+    if(!messageQueue.isEmpty()){
+        let messageObj = messageQueue.dequeue();
+        sendMessage(messageObj.message);
+        expectResponse = messageObj.expectResponse;
+    }
+    setTimeout(emptyMessageQueue, expectResponse ? 100 : 10)
+}
+
+function sendMessage(message){
+    console.log('Sending message:', message);
+    rcs.write(message + '\r', function (err) {
+        if (err) {
+            return console.log('Error on writing:', message, 'Error message:', err.message);
+        }
+    });
 }
