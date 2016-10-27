@@ -1,0 +1,10 @@
+[Unit]
+Description=Waggoner House Firebase Proxy
+
+[Service]
+TimeoutStartSec=0
+User=scotty
+ExecStart=/home/scotty/waggoner-house-firebase-proxy/start.sh
+
+[Install]
+WantedBy=multi-user.target
