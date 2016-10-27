@@ -34,7 +34,7 @@ function initFirebase(){
             console.log("Error reading refreshInterval: " + errorObject);
         });
 
-    db.ref('thermostats')
+    db.ref('thermostats/current')
         .on("child_changed", function(snapshot) {
             setThermostat(snapshot.val());
         });
@@ -76,7 +76,7 @@ function handleResponse(serialData){
     let statusObj = parseStatusType1(message);
 
     thermostatCache[statusObj.zone] = statusObj;
-    let ref = db.ref(`thermostats/zone${statusObj.zone}`);
+    let ref = db.ref(`thermostats/current/zone${statusObj.zone}`);
 
     ref.update(statusObj, function(error) {
         if (error) {
@@ -156,7 +156,7 @@ function emptyMessageQueue(){
         sendMessage(messageObj.message);
         expectResponse = messageObj.expectResponse;
     }
-    setTimeout(emptyMessageQueue, expectResponse ? 100 : 10)
+    setTimeout(emptyMessageQueue, expectResponse ? 200 : 10);
 }
 
 function sendMessage(message){
