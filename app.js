@@ -34,9 +34,9 @@ function initFirebase(){
             console.log("Error reading refreshInterval: " + errorObject);
         });
 
-    db.ref('thermostats/current')
+    db.ref('thermostats/zones')
         .on("child_changed", function(snapshot) {
-            setThermostat(snapshot.val());
+            setThermostat(snapshot.key, snapshot.val());
         });
 }
 
@@ -74,9 +74,11 @@ function handleResponse(serialData){
     let message = serialData.toString();
     console.log('Received:', message);
     let statusObj = parseStatusType1(message);
+    let zone = statusObj.zone;
+    statusObj = _.omit(statusObj, 'zone');
 
-    thermostatCache[statusObj.zone] = statusObj;
-    let ref = db.ref(`thermostats/current/zone${statusObj.zone}`);
+    thermostatCache[zone] = _.omit(statusObj, 'zone');
+    let ref = db.ref(`thermostats/zones/${zone}`);
 
     ref.update(statusObj, function(error) {
         if (error) {
@@ -119,8 +121,8 @@ function parseStatusType1(message){
         }, {});
 }
 
-function setThermostat(data){
-    let changes = getThermostatChanges(data);
+function setThermostat(zone, data){
+    let changes = getThermostatChanges(zone, data);
     if(changes.length === 0) return;
 
     messageQueue.enqueue(_.reduce(changes, (result, value) => {
@@ -139,12 +141,12 @@ function setThermostat(data){
                 break;
         }
         return result;
-    }, `A=${data.zone}`));
+    }, `A=${zone}`));
 }
 
-function getThermostatChanges(data){
+function getThermostatChanges(zone, data){
     return _.reduce(data, (result, value, key) => {
-        return _.isEqual(value, thermostatCache[data.zone][key]) ?
+        return _.isEqual(value, thermostatCache[zone][key]) ?
             result : result.concat(key);
     }, []);
 }
