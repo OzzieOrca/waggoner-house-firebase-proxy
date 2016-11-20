@@ -115,7 +115,7 @@ function parseStatusMessage(message){
         'VA': 'ventDamperStatus',
         'D1': 'zoneDamper1Status',
         'D2': 'zoneDamper2Status',
-        'SCP': 'minimumTimeStatus',
+        'SCP': 'minTimeStatus',
         'SM': 'systemModeStatus',
         'SF': 'systemFanStatus'
     };
@@ -129,8 +129,13 @@ function parseStatusMessage(message){
         })
         .reduce((result, element) => {
             let key = messageTypes[element.type];
-            if(key && element.value){
-                result[key] = !isNaN(element.value) ? parseInt(element.value) : element.value;
+            let value = element.value;
+            if(key && value){
+                if(key === 'minTimeStatus'){
+                    [result.minRunTimeStage1, result.minOffTimeStage1, result.minRunTimeStage2, result.minOffTimeStage2] = parseMinTime(value);
+                }else{
+                    result[key] = !isNaN(value) ? parseInt(value) : value;
+                }
             }
             return result;
         }, {})
@@ -179,6 +184,17 @@ function emptyMessageQueue(){
         expectResponse = messageObj.expectResponse;
     }
     setTimeout(emptyMessageQueue, expectResponse ? 200 : 10);
+}
+
+function parseMinTime(value){
+    return _(value)
+        .split('')
+        .flatMap(val => {
+            return _(parseInt(val).toString(2))
+                .padStart(2, '0')
+                .split('')
+                .map((val) => parseInt(val));
+        });
 }
 
 function sendMessage(message){
