@@ -74,17 +74,21 @@ function handleResponse(serialData){
     let message = serialData.toString();
     console.log('Received:', message);
     let statusObj = parseStatusType1(message);
-    let zone = statusObj.zone;
-    statusObj = _.omit(statusObj, 'zone');
+    if(statusObj !== undefined) {
+        let zone = statusObj.zone;
+        statusObj = _.omit(statusObj, 'zone');
 
-    thermostatCache[zone] = _.omit(statusObj, 'zone');
-    let ref = db.ref(`thermostats/zones/${zone}`);
+        thermostatCache[zone] = _.omit(statusObj, 'zone');
+        let ref = db.ref(`thermostats/zones/${zone}`);
 
-    ref.update(statusObj, function(error) {
-        if (error) {
-            console.log("Data could not be saved." + error);
-        }
-    });
+        ref.update(statusObj, function (error) {
+            if (error) {
+                console.log("Data could not be saved." + error);
+            }
+        });
+    }else{
+        console.log('Parsed message empty');
+    }
 }
 
 function parseStatusType1(message){
