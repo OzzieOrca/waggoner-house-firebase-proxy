@@ -10,6 +10,7 @@ let rcs;
 let refreshInterval = 10000;
 let thermostatCache = {};
 let messageQueue = new MessageQueue();
+let lastZone; // Cache last zone form multi-packet responses
 
 init();
 
@@ -58,11 +59,12 @@ function initSerial(){
 
 function requestStatus() {
     messageQueue.enqueue(
-        _.range(5)
-            .map(zoneId => {
+        _(5).range()
+            .flatMap(zoneId => {
                 zoneId++; // convert 0 offset to zones beginning at 1
-                return `A=${zoneId} R=1`;
-            }),
+                return [`A=${zoneId} R=1`, `A=${zoneId} R=2`];
+            })
+            .value(),
         true
     );
 
@@ -73,7 +75,7 @@ function requestStatus() {
 function handleResponse(serialData){
     let message = serialData.toString();
     console.log('Received:', message);
-    let statusObj = parseStatusType1(message);
+    let statusObj = parseStatusMessage(message);
     if(statusObj !== undefined) {
         let zone = statusObj.zone;
         statusObj = _.omit(statusObj, 'zone');
@@ -91,8 +93,28 @@ function handleResponse(serialData){
     }
 }
 
-function parseStatusType1(message){
-    return _(message.replace('\r', '').split(' '))
+function parseStatusMessage(message){
+    let messageTypes = {
+        'O': 'zone',
+        'T': 'currentTemperature',
+        'SPH': 'setPointHeating',
+        'SPC': 'setPointCooling',
+        'M': 'currentMode',
+        'FM': 'fanMode',
+        'H1A': 'heatingStage1',
+        'H2A': 'heatingStage2',
+        'H3A': 'heatingStage3',
+        'C1A': 'coolingStage1',
+        'C2A': 'coolingStage2',
+        'FA': 'fanStatus',
+        'VA': 'ventDamperStatus',
+        'D1': 'zoneDamper1Status',
+        'D2': 'zoneDamper2Status',
+        'SCP': 'minimumTimeStatus',
+        'SM': 'systemModeStatus',
+        'SF': 'systemFanStatus'
+    };
+    return _.chain(message.replace('\r', '').split(' '))
         .map(element => {
             element = element.split('=');
             return {
@@ -101,28 +123,17 @@ function parseStatusType1(message){
             }
         })
         .reduce((result, element) => {
-            switch(element.type){
-                case 'O':
-                    result.zone = element.value;
-                    break;
-                case 'T':
-                    result.currentTemperature = element.value;
-                    break;
-                case 'SPH':
-                    result.setPointHeating = element.value;
-                    break;
-                case 'SPC':
-                    result.setPointCooling = element.value;
-                    break;
-                case 'M':
-                    result.currentMode = element.value;
-                    break;
-                case 'FM':
-                    result.fanMode = element.value;
-                    break;
+            let key = messageTypes[element.type];
+            if(key){
+                result[key] = element.value;
             }
             return result;
-        }, {});
+        }, {})
+        .thru((result) => {
+            result.zone = lastZone = result.zone || lastZone;
+            return result;
+        })
+        .value();
 }
 
 function setThermostat(zone, data){
