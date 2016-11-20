@@ -12,6 +12,11 @@ let thermostatCache = {};
 let messageQueue = new MessageQueue();
 let lastZone; // Cache last zone form multi-packet responses
 
+// Zone Control Unit (ZCU)/HVAC Setup
+// ZCU 1 - Zone 1 and 2
+// ZCU 2 - Zone 3
+// ZCU 3 - Zone 4 and 5
+
 init();
 
 function init(){
@@ -124,8 +129,8 @@ function parseStatusMessage(message){
         })
         .reduce((result, element) => {
             let key = messageTypes[element.type];
-            if(key){
-                result[key] = element.value;
+            if(key && element.value){
+                result[key] = !isNaN(element.value) ? parseInt(element.value) : element.value;
             }
             return result;
         }, {})
