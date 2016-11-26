@@ -85,7 +85,7 @@ function handleResponse(serialData){
         let zone = statusObj.zone;
         statusObj = _.omit(statusObj, 'zone');
 
-        thermostatCache[zone] = _.omit(statusObj, 'zone');
+        thermostatCache[zone] = statusObj;
         let ref = db.ref(`thermostats/zones/${zone}`);
 
         ref.update(statusObj, function (error) {
@@ -143,6 +143,8 @@ function parseStatusMessage(message){
             result.zone = lastZone = result.zone || lastZone;
             return result;
         })
+        .omitBy(_.isUndefined)
+        .omitBy(_.isNull)
         .value();
 }
 
