@@ -3,6 +3,7 @@
 let firebase = require('firebase');
 let SerialPort = require('serialport');
 let _ = require('lodash');
+let moment = require('moment');
 let MessageQueue = require('./message-queue.js');
 
 let db;
@@ -23,6 +24,7 @@ function init(){
     initFirebase();
     initSerial();
     emptyMessageQueue();
+    logHistoricalData();
 }
 
 function initFirebase(){
@@ -206,4 +208,19 @@ function sendMessage(message){
             return console.log('Error on writing:', message, 'Error message:', err.message);
         }
     });
+}
+
+function logHistoricalData(){
+    if(!_.isEmpty(thermostatCache)){
+        let ref = db.ref('thermostats/historical').push();
+
+        ref.set({ timestamp: firebase.database.ServerValue.TIMESTAMP, zones: thermostatCache }, error => {
+            if (error) {
+                console.log('Error logging historical data', error);
+            }
+        });
+    }
+
+    // Run every 10 mins starting on the hour
+    setTimeout(logHistoricalData, moment().startOf('hour').add(moment().minute() - moment().minute() % 10 + 10, 'minutes').diff());
 }
