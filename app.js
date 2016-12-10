@@ -145,8 +145,7 @@ function parseStatusMessage(message){
             result.zone = lastZone = result.zone || lastZone;
             return result;
         })
-        .omitBy(_.isUndefined)
-        .omitBy(_.isNull)
+        .omitBy(value => _.isUndefined(value) || _.isNull(value) || _.isNaN(value))
         .value();
 }
 
