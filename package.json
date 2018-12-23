@@ -6,9 +6,9 @@
     "start": "node app.js"
   },
   "dependencies": {
-    "firebase": "^3.5.0",
+    "firebase": "^5.7.1",
     "lodash": "^4.16.4",
     "moment": "^2.17.1",
-    "serialport": "^4.0.3"
+    "serialport": "^7.1.1"
   }
 }

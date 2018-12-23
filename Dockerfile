@@ -1,26 +1,26 @@
-FROM resin/armv7hf-debian
+FROM resin/armv7hf-debian:stretch
 
 RUN [ "cross-build-start" ]
 
-RUN mkdir -p /usr/src/app/secrets
-WORKDIR /usr/src/app
+RUN mkdir -p /app/secrets
+WORKDIR /app
 
 RUN curl -sL https://deb.nodesource.com/setup_11.x | bash -
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 
-RUN apt-get update && apt-get install -y \
-    nodejs
-    yarn
-RUN ln -s /usr/bin/nodejs /usr/bin/node
+RUN apt update && apt install -y \
+    nodejs \
+    build-essential \
+    python-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY package.json /usr/src/app/
-RUN yarn install
-COPY . /usr/src/app
+COPY package.json /app
+COPY package-lock.json /app
+RUN npm i
+COPY . /app
 
 RUN [ "cross-build-end" ]
 
-VOLUME ["/usr/src/app/secrets"]
+VOLUME ["/app/secrets"]
 
 CMD [ "npm", "start" ]
 
