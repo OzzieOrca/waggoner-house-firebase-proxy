@@ -12,7 +12,7 @@
           secretName: waggoner-house-firebase-service-account
     containers:
       - name: node-firebase-proxy
-        image: quay.io/ozzieorca/waggoner-house-firebase-proxy
+        image: quay.io/ozzieorca/waggoner-house-firebase-proxy:1.0.0
         volumeMounts:
           - name: tty-usb-1
             mountPath: /dev/ttyUSB1

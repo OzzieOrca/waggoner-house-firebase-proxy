@@ -1,6 +1,7 @@
 'use strict';
 
-let firebase = require('firebase');
+const firebase = require('firebase-admin');
+const serviceAccount = require('./secrets/waggoner-house-firebase-service-account.json');
 let SerialPort = require('serialport');
 let _ = require('lodash');
 let moment = require('moment');
@@ -29,7 +30,7 @@ function init(){
 
 function initFirebase(){
     firebase.initializeApp({
-        serviceAccount: 'secrets/waggoner-house-firebase-service-account.json',
+        credential: firebase.credential.cert(serviceAccount),
         databaseURL: 'https://waggoner-house.firebaseio.com'
     });
 
